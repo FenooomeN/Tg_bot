@@ -1,20 +1,44 @@
 import telebot
-
-TOKEN = "7795631923:AAFSJSmbQes8jS40RFCI6YeML_7AkCqd9-w"
+from utils import ConvertException, СurrencyConverter
+from config import TOKEN, keys
 
 bot = telebot.TeleBot(TOKEN)
 
-@bot.message_handler(content_types=['text'])
-def function_name(message):
-    bot.reply_to(message, "This is a message handler")
+@bot.message_handler(commands=['help', 'start'])
+def help_help(message: telebot.types.Message):
+    text = ('Чтобы начать работу введите команду боту: \n <имя валюты> \
+    <в какую валюту>\
+    <количество>\n \
+    по команде /value можно получить список доступных валют')
+    bot.reply_to(message, text)
 
-# Обрабатываются все сообщения, содержащие команды '/start' or '/help'.
-@bot.message_handler(commands=['start', 'help'])
-def handle_start_help(message):
-    pass
+@bot.message_handler(commands=['value'])
+def value_key(message: telebot.types.Message):
+    text = 'Доступные валюты:'
+    for key in keys.keys():
+        text = '\n'.join((text, key))
+    bot.reply_to(message, text)
 
+@bot.message_handler(content_types=['text',])
+def convert(message: telebot.types.Message):
+    try:
+        values = message.text.split(' ')
 
-# Обрабатываются все документы и аудиозаписи
-@bot.message_handler(content_types=['document', 'audio'])
-def handle_docs_audio(message):
-    pass
+        if len(values) != 3:
+            raise ConvertException('Неправильно количество параметров')
+
+        qoute, base, amount = values
+        total_base = СurrencyConverter.currency_convert(qoute=qoute, base=base, amount=amount)
+
+    except ConvertException as e:
+        bot.reply_to(message, f'Не удалось обработать запрос по причине \n{e}')
+
+    except Exception as e:
+        bot.reply_to(message, f'Не удалось обработать запрос по причине \n{e}')
+
+    else:
+        text = f'Стоимость {amount} {keys[qoute]} в {keys[base]}: {total_base}'
+        bot.send_message(message.chat.id, text)
+
+bot.polling(none_stop=True)
+
